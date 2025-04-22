@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jaringan Interaktif</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            background: radial-gradient(circle, #0f172a, #1e293b);
+            overflow: hidden;
+            touch-action: none;
+        }
+        canvas {
+            display: block;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="networkCanvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById("networkCanvas");
+        const ctx = canvas.getContext("2d");
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        let particles = [];
+        const maxDistance = 120;
+        let touchActive = false;
+        let touchX = null, touchY = null;
+
+        class Particle {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.vx = Math.random() * 2 - 1;
+                this.vy = Math.random() * 2 - 1;
+                this.size = Math.random() * 4 + 1;
+                this.orbitRadius = Math.random() * 50 + 30;
+                this.orbitSpeed = Math.random() * 0.05 + 0.02;
+                this.orbitAngle = Math.random() * Math.PI * 2;
+                this.isOrbiting = false;
+            }
+
+            move() {
+                if (touchActive) {
+                    let dx = touchX - this.x;
+                    let dy = touchY - this.y;
+                    let distance = Math.sqrt(dx * dx + dy * dy);
+
+                    if (distance < 150) {
+                        if (!this.isOrbiting) {
+                            // Perlahan bergerak menuju area sentuhan sebelum mengorbit
+                            this.x += dx * 0.05;
+                            this.y += dy * 0.05;
+
+                            if (Math.abs(dx) < 5 && Math.abs(dy) < 5) {
+                                this.isOrbiting = true; // Mulai mengorbit setelah sampai ke area
+                            }
+                        } else {
+                            // Orbit di sekitar titik sentuhan
+                            this.orbitAngle += this.orbitSpeed;
+                            this.x = touchX + this.orbitRadius * Math.cos(this.orbitAngle);
+                            this.y = touchY + this.orbitRadius * Math.sin(this.orbitAngle);
+                        }
+                        return;
+                    }
+                }
+
+                // Jika tidak ada sentuhan, kembali ke gerakan acak
+                this.isOrbiting = false;
+                this.x += this.vx;
+                this.y += this.vy;
+
+                if (this.x < 0 || this.x > canvas.width) this.vx *= -1;
+                if (this.y < 0 || this.y > canvas.height) this.vy *= -1;
+            }
+
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fillStyle = "rgba(173, 216, 230, 0.8)";
+                ctx.fill();
+            }
+        }
+
+        function createParticles(count) {
+            for (let i = 0; i < count; i++) {
+                let x = Math.random() * canvas.width;
+                let y = Math.random() * canvas.height;
+                particles.push(new Particle(x, y));
+            }
+        }
+
+        function drawConnections() {
+            for (let i = 0; i < particles.length; i++) {
+                for (let j = i + 1; j < particles.length; j++) {
+                    let dx = particles[i].x - particles[j].x;
+                    let dy = particles[i].y - particles[j].y;
+                    let distance = Math.sqrt(dx * dx + dy * dy);
+
+                    if (distance < maxDistance) {
+                        ctx.beginPath();
+                        ctx.moveTo(particles[i].x, particles[i].y);
+                        ctx.lineTo(particles[j].x, particles[j].y);
+                        ctx.strokeStyle = `rgba(173, 216, 230, ${1 - distance / maxDistance})`;
+                        ctx.lineWidth = 1;
+                        ctx.stroke();
+                    }
+                }
+            }
+        }
+
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            for (let particle of particles) {
+                particle.move();
+                particle.draw();
+            }
+
+            drawConnections();
+            requestAnimationFrame(animate);
+        }
+
+        function handleTouchStart(event) {
+            touchActive = true;
+            touchX = event.touches[0].clientX;
+            touchY = event.touches[0].clientY;
+        }
+
+        function handleTouchMove(event) {
+            touchX = event.touches[0].clientX;
+            touchY = event.touches[0].clientY;
+        }
+
+        function handleTouchEnd() {
+            touchActive = false;
+        }
+
+        window.addEventListener("touchstart", handleTouchStart);
+        window.addEventListener("touchmove", handleTouchMove);
+        window.addEventListener("touchend", handleTouchEnd);
+
+        window.addEventListener("resize", () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
+
+        createParticles(100);
+        animate();
+    </script>
+</body>
+</html>
